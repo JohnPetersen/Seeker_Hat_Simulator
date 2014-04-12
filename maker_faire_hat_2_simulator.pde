@@ -26,7 +26,7 @@ void setup() {
   // convert centerpoint and radious with higher precision
   centerLon = (int)(-121.316289/180.0) * 2147483647;
   centerLat =   (int)(38.869004/180.0) * 2147483647;
-  radius = (int)(0.000278/180.0) * 2147483647;
+  radius = (int)((0.000278/180.0) * 2147483647.0);
 
   for (String s : Serial.list()) {
     println("port: " + s);
