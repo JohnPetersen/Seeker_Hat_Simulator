@@ -10,11 +10,11 @@ int HEIGHT = 360;
 float ARC_SEC = 1.0 / 3600.0;
 
 float theta = 0.0;  // Start angle at 0
-float radius = 278.0;
-long lon;
-long lat;
-long centerLon = -121316289L;
-long centerLat =  38869004L;
+int radius;
+int lon;
+int lat;
+int centerLon;
+int centerLat;
 
 String lastMsgReceived = "<NONE>";
 String lastMsgSent = "<NONE>";
@@ -22,6 +22,11 @@ String lastMsgSent = "<NONE>";
 void setup() {
   size(WIDTH, HEIGHT);
   frameRate(10);
+
+  // convert centerpoint and radious with higher precision
+  centerLon = (int)(-121.316289/180.0) * 2147483647;
+  centerLat =   (int)(38.869004/180.0) * 2147483647;
+  radius = (int)(0.000278/180.0) * 2147483647;
 
   for (String s : Serial.list()) {
     println("port: " + s);
@@ -45,12 +50,20 @@ void draw() {
   // alarm button handler
 }
 
+int toBams(float a) {
+  return (int)((a/180.0) * 2147483647);
+}
+
+float toDeg(int b) {
+  return (b/2147483647.0) * 180.0;
+}
+
 void calcPoint() {
   // Increment theta (try different values for 'angular velocity' here
   theta = (theta + 0.02) % TWO_PI;
 
-  lon = (long)(radius * sin(theta)) + centerLon;
-  lat = (long)(radius * cos(theta)) + centerLat;
+  lon = (int)(radius * sin(theta)) + centerLon;
+  lat = (int)(radius * cos(theta)) + centerLat;
 }
 
 void sendPosition() {
