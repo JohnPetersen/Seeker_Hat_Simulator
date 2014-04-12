@@ -30,7 +30,9 @@ void setup() {
     String portName = Serial.list()[0];
     mySerial = new Serial(this, portName, 9600);
   } catch(ArrayIndexOutOfBoundsException e) {
-    print("No serial port found!");
+    println("No serial port found!");
+  } catch (Exception e) {
+    println("Error opening serial port.");
   }
 }
 
