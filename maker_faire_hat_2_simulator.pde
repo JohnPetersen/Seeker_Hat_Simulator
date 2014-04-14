@@ -24,9 +24,9 @@ void setup() {
   frameRate(10);
 
   // convert centerpoint and radious with higher precision
-  centerLon = (int)(-121.316289/180.0) * 2147483647;
-  centerLat =   (int)(38.869004/180.0) * 2147483647;
-  radius = (int)((0.000278/180.0) * 2147483647.0);
+  centerLon = toBams(-121.316289);
+  centerLat =   toBams(38.869004);
+  radius = toBams(0.000278);
 
   for (String s : Serial.list()) {
     println("port: " + s);
@@ -34,6 +34,7 @@ void setup() {
   try {
     String portName = Serial.list()[0];
     mySerial = new Serial(this, portName, 9600);
+    serialReady = true;
   } catch(ArrayIndexOutOfBoundsException e) {
     println("No serial port found!");
   } catch (Exception e) {
