@@ -16,6 +16,9 @@ int lat;
 int centerLon;
 int centerLat;
 
+int sendTime = 0;
+int recvTime = 0;
+
 String lastMsgReceived = "<NONE>";
 String lastMsgSent = "<NONE>";
 
@@ -28,9 +31,11 @@ void setup() {
   centerLat =   toBams(38.869004);
   radius = toBams(0.000278);
 
+  println("Ports:");
   for (String s : Serial.list()) {
-    println("port: " + s);
+    println("  port: " + s);
   }
+  println("End Ports");
   try {
     String portName = Serial.list()[0];
     mySerial = new Serial(this, portName, 9600);
@@ -45,8 +50,14 @@ void setup() {
 void draw() {
   background(0);
   calcPoint();
-  sendPosition();
-  receivePosition();
+  if (millis() > sendTime) {
+    sendPosition();
+    sendTime = millis() + 2000;
+  }
+  if (millis() > recvTime) {
+    receivePosition();
+    recvTime = millis() + 1000;
+  }
   renderData();
   // alarm button handler
 }
@@ -70,17 +81,57 @@ void calcPoint() {
 void sendPosition() {
   // initially we will send strings...
   if (serialReady) {
-    lastMsgSent = "{0," + lat + "," + lon + "}";
-    mySerial.write(lastMsgSent);
+    
+    byte buff[] = new byte[11];
+    
+    buff[0] = START_FLAG;
+    buff[1] = 16;
+    buff[2] = (byte) (lat >> 24); 
+    buff[3] = (byte) (lat >> 16);
+    buff[4] = (byte) (lat >> 8);
+    buff[5] = (byte) lat;
+    buff[6] = (byte) (lon >> 24);
+    buff[7] = (byte) (lon >> 16);
+    buff[8] = (byte) (lon >> 8);
+    buff[9] = (byte) lon;
+    buff[10] = 0;
+    mySerial.write(buff);
+    
+    lastMsgSent = "16, " + lat + ", " + lon;
+  //  mySerial.write(lastMsgSent);
   }
 }
+
+int getLong(byte buff[], int i) {
+  return buff[i] << 24 | (buff[i+1] & 0xFF) << 16 | (buff[i+2] & 0xFF) << 8 | (buff[i+3] & 0xFF);
+}
+
+byte START_FLAG = (byte)0xff;
 
 void receivePosition() {
     // initially we will receive strings...
     if (serialReady) {
+      byte buff[] = new byte[30];
       if (mySerial.available() > 0) {
-        String data = mySerial.readString();
-        lastMsgReceived = data;
+        int n = mySerial.readBytes(buff);
+        println(n + " bytes to read");
+        //println(buff);
+        // fast forward to the first message start marker
+        int i = 0;
+        while (i < n && buff[i] != START_FLAG) {
+          i++;   
+        }
+        println("i = " + i);
+        if (n - i >= 11) {
+          // there should be a message in the buffer
+          byte alarm = buff[++i];
+          int lat = getLong(buff, ++i);
+          int lon = getLong(buff, i+=4);
+          lastMsgReceived = alarm + ", " + lat + ", " + lon;
+          println(lastMsgReceived);
+        } else {
+          println("no message!");
+        }
       }
     }
 }
