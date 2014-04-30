@@ -15,16 +15,35 @@ int lon;
 int lat;
 int centerLon;
 int centerLat;
-
+byte alarmBase = 16;
+byte alarmBit = 1;
+byte ackBit = 2;
 int sendTime = 0;
 int recvTime = 0;
 
 String lastMsgReceived = "<NONE>";
 String lastMsgSent = "<NONE>";
 
+int btnAckX, btnAckY;
+int btnAlmX, btnAlmY;
+int rectSize = 75;
+color rectColor, rectHighlight, rectPressed;
+boolean btnAckOver = false;
+boolean btnAlmOver = false;
+boolean btnAckPressed = false;
+boolean btnAlmPressed = false;
+
 void setup() {
   size(WIDTH, HEIGHT);
   frameRate(10);
+
+  rectColor = #08087F;
+  rectHighlight = #3F3FFF;
+  rectPressed = #087F08;
+  btnAckX = WIDTH-rectSize-10;
+  btnAckY = HEIGHT-rectSize-10;
+  btnAlmX = WIDTH-rectSize-10;
+  btnAlmY = btnAckY - rectSize - 10;
 
   // convert centerpoint and radious with higher precision
   centerLon = toBams(-121.316289);
@@ -48,8 +67,17 @@ void setup() {
 }
 
 void draw() {
+  // blank background
   background(0);
+  // draw button
+  btnAckOver = overRect(btnAckX, btnAckY, rectSize, rectSize);
+  btnAlmOver = overRect(btnAlmX, btnAlmY, rectSize, rectSize);
+  drawButton("ACK", btnAckOver, btnAckPressed, btnAckX, btnAckY, rectSize, rectSize);
+  drawButton("Alarm", btnAlmOver, btnAlmPressed, btnAlmX, btnAlmY, rectSize, rectSize);
+  
   calcPoint();
+  
+  // send message to other every 2 seconds
   if (millis() > sendTime) {
     sendPosition();
     sendTime = millis() + 2000;
@@ -59,7 +87,32 @@ void draw() {
     recvTime = millis() + 1000;
   }
   renderData();
-  // alarm button handler
+}
+
+void drawButton(String txt, boolean highlight, boolean pressed, int x, int y, int w, int h) {
+  //println("Draw button: "+ x + ", " + y + ", " + w + ", " + h);
+  if (pressed) {
+    fill(rectPressed);
+  } else if (highlight) {
+    fill(rectHighlight);
+  } else {
+    fill(rectColor);
+  }
+  stroke(255);
+  rect(x, y, w, h);
+  fill(255);
+  float tw = textWidth(txt);
+  float th = textAscent() + textDescent();
+  text(txt, x + ((w - tw) / 2), y + ((h - th) / 2));
+}
+
+boolean overRect(int x, int y, int width, int height)  {
+  if (mouseX >= x && mouseX <= x+width && 
+      mouseY >= y && mouseY <= y+height) {
+    return true;
+  } else {
+    return false;
+  }
 }
 
 int toBams(float a) {
@@ -68,6 +121,16 @@ int toBams(float a) {
 
 float toDeg(int b) {
   return (b/2147483647.0) * 180.0;
+}
+
+void mousePressed() {
+  if (btnAckOver) {
+    println("ACK");
+    btnAckPressed = !btnAckPressed;
+  } else if (btnAlmOver) {
+    println("ALARM");
+    btnAlmPressed = !btnAlmPressed;
+  }
 }
 
 void calcPoint() {
@@ -82,10 +145,12 @@ void sendPosition() {
   // initially we will send strings...
   if (serialReady) {
     
+    byte a = (byte) (alarmBase | (btnAlmPressed ? alarmBit : 0) | (btnAckPressed ? ackBit : 0));
+    
     byte buff[] = new byte[11];
     
     buff[0] = START_FLAG;
-    buff[1] = 16;
+    buff[1] = a;
     buff[2] = (byte) (lat >> 24); 
     buff[3] = (byte) (lat >> 16);
     buff[4] = (byte) (lat >> 8);
@@ -97,7 +162,7 @@ void sendPosition() {
     buff[10] = 0;
     mySerial.write(buff);
     
-    lastMsgSent = "16, " + lat + ", " + lon;
+    lastMsgSent = a + ", " + lat + ", " + lon;
   //  mySerial.write(lastMsgSent);
   }
 }
