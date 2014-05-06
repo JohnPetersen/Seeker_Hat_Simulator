@@ -8,6 +8,7 @@ boolean serialReady = false;
 int WIDTH = 640;
 int HEIGHT = 360;
 float ARC_SEC = 1.0 / 3600.0;
+int CROSS_SIZE = 10;
 
 float theta = 0.0;  // Start angle at 0
 int radius;
@@ -15,6 +16,8 @@ int lon;
 int lat;
 int centerLon;
 int centerLat;
+int recvLon;
+int recvLat;
 byte alarmBase = 16;
 byte alarmBit = 1;
 byte ackBit = 2;
@@ -48,6 +51,9 @@ void setup() {
   // convert centerpoint and radious with higher precision
   centerLon = toBams(-121.316289);
   centerLat =   toBams(38.869004);
+  recvLon = centerLon;
+  recvLat = centerLat;
+  println("centerLat: " + centerLat + " centerLon: " + centerLon);
   radius = toBams(0.000278);
 
   println("Ports:");
@@ -193,6 +199,10 @@ void receivePosition() {
           int lat = getLong(buff, ++i);
           int lon = getLong(buff, i+=4);
           lastMsgReceived = alarm + ", " + lat + ", " + lon;
+          if (alarm >= 16) {
+            recvLat = lat;
+            recvLon = lon;
+          }
           println(lastMsgReceived);
         } else {
           println("no message!");
@@ -205,20 +215,30 @@ int lat2pixels(long v) {
   return (int)map(v, centerLat - radius, centerLat + radius, 0, min(HEIGHT, WIDTH));
 }
 int lon2pixels(long v) {
-  return (int)map(v, centerLon - radius, centerLon + radius, 0, min(HEIGHT, WIDTH)) + min(HEIGHT, WIDTH)/2;
+  int half = min(HEIGHT, WIDTH)/2;
+  return (int)map(v, centerLon - radius, centerLon + radius, WIDTH/2 - half, WIDTH/2 + half);
 }
 
 void renderData() {
+  // outer circle
   noFill();
   stroke(0, 0, 255);
   ellipse(WIDTH/2, HEIGHT/2, min(HEIGHT, WIDTH), min(HEIGHT, WIDTH));
+  // radius line
   stroke(255, 0, 0);
   int x = lon2pixels(lon);
   int y = lat2pixels(lat);
   line(WIDTH/2, HEIGHT/2, x, y);
+  // orbiting circle (my position)
   noStroke();
   fill(255);
   ellipse(x, y, 16, 16);
+  // received position
+  stroke(0,255,0);
+  x = lon2pixels(recvLon);
+  y = lat2pixels(recvLat);
+  line(x - CROSS_SIZE, y, x + CROSS_SIZE, y);
+  line(x, y - CROSS_SIZE, x, y + CROSS_SIZE);
 
   String s = "LAT: " + lat; 
   text(s, 10, 350);
