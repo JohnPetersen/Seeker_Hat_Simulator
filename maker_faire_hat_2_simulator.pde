@@ -23,18 +23,22 @@ byte alarmBit = 1;
 byte ackBit = 2;
 int sendTime = 0;
 int recvTime = 0;
+int firstMsgRecvTime = 0;
 
 String lastMsgReceived = "<NONE>";
 String lastMsgSent = "<NONE>";
 
 int btnAckX, btnAckY;
 int btnAlmX, btnAlmY;
+int btnStopX, btnStopY;
 int rectSize = 75;
 color rectColor, rectHighlight, rectPressed;
 boolean btnAckOver = false;
 boolean btnAlmOver = false;
+boolean btnStopOver = false;
 boolean btnAckPressed = false;
 boolean btnAlmPressed = false;
+boolean btnStopPressed = false;
 
 void setup() {
   size(WIDTH, HEIGHT);
@@ -47,6 +51,8 @@ void setup() {
   btnAckY = HEIGHT-rectSize-10;
   btnAlmX = WIDTH-rectSize-10;
   btnAlmY = btnAckY - rectSize - 10;
+  btnStopX = WIDTH-rectSize-10;
+  btnStopY = btnAlmY - 2*(rectSize + 10);
 
   // convert centerpoint and radious with higher precision
   centerLon = toBams(-121.316289);
@@ -78,10 +84,14 @@ void draw() {
   // draw button
   btnAckOver = overRect(btnAckX, btnAckY, rectSize, rectSize);
   btnAlmOver = overRect(btnAlmX, btnAlmY, rectSize, rectSize);
+  btnStopOver = overRect(btnStopX, btnStopY, rectSize, rectSize);
   drawButton("ACK", btnAckOver, btnAckPressed, btnAckX, btnAckY, rectSize, rectSize);
   drawButton("Alarm", btnAlmOver, btnAlmPressed, btnAlmX, btnAlmY, rectSize, rectSize);
+  drawButton("Stop", btnStopOver, btnStopPressed, btnStopX, btnStopY, rectSize, rectSize);
   
-  calcPoint();
+  if (!btnStopPressed) { 
+    calcPoint();
+  }
   
   // send message to other every 2 seconds
   if (millis() > sendTime) {
@@ -129,6 +139,10 @@ float toDeg(int b) {
   return (b/2147483647.0) * 180.0;
 }
 
+float rad2deg(float r) {
+  return r * 180.0/PI;
+}
+
 void mousePressed() {
   if (btnAckOver) {
     println("ACK");
@@ -136,6 +150,9 @@ void mousePressed() {
   } else if (btnAlmOver) {
     println("ALARM");
     btnAlmPressed = !btnAlmPressed;
+  } else if (btnStopOver) {
+    println("STOP");
+    btnStopPressed = !btnStopPressed;
   }
 }
 
@@ -143,8 +160,10 @@ void calcPoint() {
   // Increment theta (try different values for 'angular velocity' here
   theta = (theta + 0.02) % TWO_PI;
 
-  lon = (int)(radius * sin(theta)) + centerLon;
-  lat = (int)(radius * cos(theta)) + centerLat;
+  lon = (int)(radius * cos(theta)) + centerLon;
+  lat = (int)(radius * sin(theta)) + centerLat;
+//  lon = (int)(radius * sin(theta)) + centerLon;
+//  lat = (int)(radius * cos(theta)) + centerLat;
 }
 
 void sendPosition() {
@@ -204,6 +223,11 @@ void receivePosition() {
             recvLon = lon;
           }
           println(lastMsgReceived);
+          if (firstMsgRecvTime == 0) {
+            firstMsgRecvTime = millis();
+          } else {
+            println("Current runtime: " + ((millis() - firstMsgRecvTime)/1000) + " seconds");
+          }
         } else {
           println("no message!");
         }
@@ -219,34 +243,59 @@ int lon2pixels(long v) {
   return (int)map(v, centerLon - radius, centerLon + radius, WIDTH/2 - half, WIDTH/2 + half);
 }
 
+String angleText(float r) {
+  return nfs(rad2deg(r),3,1) + "  " + nfs(r,1,3);
+}
+
 void renderData() {
   // outer circle
   noFill();
   stroke(0, 0, 255);
   ellipse(WIDTH/2, HEIGHT/2, min(HEIGHT, WIDTH), min(HEIGHT, WIDTH));
-  // radius line
+  line(WIDTH/2, HEIGHT/2, WIDTH*4/5, HEIGHT/2);
+  fill(0,0,255);
+  text("N", WIDTH*4/5, HEIGHT/2 + 5);
+  
+  // theta line
   stroke(255, 0, 0);
-  int x = lon2pixels(lon);
-  int y = lat2pixels(lat);
-  line(WIDTH/2, HEIGHT/2, x, y);
+  int myX = lon2pixels(lon);
+  int myY = lat2pixels(lat);
+  line(WIDTH/2, HEIGHT/2, myX, myY);
+  noFill();
+  arc(WIDTH/2, HEIGHT/2, min(HEIGHT, WIDTH)/3, min(HEIGHT, WIDTH)/3, 0, theta);
+  
   // orbiting circle (my position)
   noStroke();
   fill(255);
-  ellipse(x, y, 16, 16);
+  ellipse(myX, myY, 16, 16);
+  
   // received position
   stroke(0,255,0);
-  x = lon2pixels(recvLon);
-  y = lat2pixels(recvLat);
-  line(x - CROSS_SIZE, y, x + CROSS_SIZE, y);
-  line(x, y - CROSS_SIZE, x, y + CROSS_SIZE);
+  int x = lon2pixels(recvLon);
+  int y = lat2pixels(recvLat);
+  line(x,y,myX,myY);
+  pushMatrix();
+  translate(x,y);
+  line(-CROSS_SIZE,0,min(HEIGHT, WIDTH)/5,0);
+  line(0,-CROSS_SIZE,0,CROSS_SIZE);
+  float az = atan2(myY-y,myX-x);
+  popMatrix();
+  noFill();
+  if (az < 0) az = TWO_PI + az;
+  arc(x,y,min(HEIGHT, WIDTH)/4, min(HEIGHT, WIDTH)/4, 0, az);
 
   String s = "LAT: " + lat; 
   text(s, 10, 350);
   s = "LON: " + lon;
   text(s, 10, 330);
-  s = "THETA: " + theta;
+  s = "THETA: " + angleText(theta);
+  fill(255,0,0);
   text(s, 10, 310);
+  s = "AZIMUTH: " + angleText(az);
+  fill(0,255,0);
+  text(s, 10, 290);
   s = "RECEIVED: " + lastMsgReceived;
+  fill(255,255,255);
   text(s, 10, 20);
   s = "SENT: " + lastMsgSent;
   text(s, 10, 40);
