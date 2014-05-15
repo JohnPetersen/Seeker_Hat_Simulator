@@ -160,10 +160,8 @@ void calcPoint() {
   // Increment theta (try different values for 'angular velocity' here
   theta = (theta + 0.02) % TWO_PI;
 
-  lon = (int)(radius * cos(theta)) + centerLon;
-  lat = (int)(radius * sin(theta)) + centerLat;
-//  lon = (int)(radius * sin(theta)) + centerLon;
-//  lat = (int)(radius * cos(theta)) + centerLat;
+  lon = (int)(radius * sin(theta)) + centerLon;
+  lat = (int)(radius * cos(theta)) + centerLat;
 }
 
 void sendPosition() {
@@ -236,11 +234,11 @@ void receivePosition() {
 }
 
 int lat2pixels(long v) {
-  return (int)map(v, centerLat - radius, centerLat + radius, 0, min(HEIGHT, WIDTH));
+  int half = min(HEIGHT, WIDTH)/2;
+  return (int)map(v, centerLat - radius, centerLat + radius, WIDTH/2 - half, WIDTH/2 + half);
 }
 int lon2pixels(long v) {
-  int half = min(HEIGHT, WIDTH)/2;
-  return (int)map(v, centerLon - radius, centerLon + radius, WIDTH/2 - half, WIDTH/2 + half);
+  return (int)map(v, centerLon - radius, centerLon + radius, 0, min(HEIGHT, WIDTH));
 }
 
 String angleText(float r) {
@@ -258,8 +256,8 @@ void renderData() {
   
   // theta line
   stroke(255, 0, 0);
-  int myX = lon2pixels(lon);
-  int myY = lat2pixels(lat);
+  int myY = lon2pixels(lon);
+  int myX = lat2pixels(lat);
   line(WIDTH/2, HEIGHT/2, myX, myY);
   noFill();
   arc(WIDTH/2, HEIGHT/2, min(HEIGHT, WIDTH)/3, min(HEIGHT, WIDTH)/3, 0, theta);
@@ -271,8 +269,8 @@ void renderData() {
   
   // received position
   stroke(0,255,0);
-  int x = lon2pixels(recvLon);
-  int y = lat2pixels(recvLat);
+  int y = lon2pixels(recvLon);
+  int x = lat2pixels(recvLat);
   line(x,y,myX,myY);
   pushMatrix();
   translate(x,y);
